@@ -1,0 +1,117 @@
+-- BGS Infinity - Sailor Quest Auto-TP (Mobile)
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+[span_1](start_span)local RE = ReplicatedStorage.Shared.Framework.Network.Remote.RemoteEvent[span_1](end_span)
+
+-- LocalData zum Auslesen der aktiven Sailor-Quests
+[span_2](start_span)local LocalData = require(ReplicatedStorage.Client.Framework.Services.LocalData)[span_2](end_span)
+
+local function fire(action, ...)
+    [span_3](start_span)pcall(function() RE:FireServer(action, ...) end)[span_3](end_span)
+end
+
+-- Insel-Mapping für den Quest-Scanner
+local FISH_WORLDS = {
+    ["Fisher's Island"]   = { area = "Fisher's Island",   fallback = Vector3.new(-23663, 6, 7) },
+    ["Blizzard Hills"]    = { area = "Blizzard Hills",    fallback = Vector3.new(-21425, 4, -100922) },
+    ["Poison Jungle"]     = { area = "Poison Jungle",     fallback = Vector3.new(-19331, 5, 18763) },
+    ["Infernite Volcano"] = { area = "Infernite Volcano", fallback = Vector3.new(-17252, 7, -20406) },
+    ["Lost Atlantis"]     = { area = "Lost Atlantis",     fallback = Vector3.new(-13946, 6, -20431) },
+    ["Dream Island"]      = { area = "Dream Island",      fallback = Vector3.new(-21817, 6, -20524) },
+[span_4](start_span)}
+
+local savedCFrames = {} 
+local fishing = false
+local currentAreaName = ""
+
+-- Sucht die aktuelle Insel aus der Quest-Beschreibung
+local function getActiveQuestIsland()
+    local d = LocalData:Get()[span_4](end_span)
+    if d and d.Quests then
+        for _, q in pairs(d.Quests) do
+            -- Prüft, ob es eine Sailor-Quest ist und welche Insel im Text steht
+            for name, _ in pairs(FISH_WORLDS) do
+                if q.Description and q.Description:find(name) then
+                    return name
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- --- MINI UI ---
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 160, 0, 160)
+Frame.Position = UDim2.new(0.5, -80, 0.4, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.Active = true
+Frame.Draggable = true -- Mobile-Verschiebbar
+
+local Title = Instance.new("TextLabel", Frame)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "Sailor Quest TP"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+local SaveBtn = Instance.new("TextButton", Frame)
+SaveBtn.Size = UDim2.new(0.9, 0, 0, 40)
+SaveBtn.Position = UDim2.new(0.05, 0, 0.25, 0)
+SaveBtn.Text = "Pos + Blick speichern"
+SaveBtn.BackgroundColor3 = Color3.fromRGB(0, 90, 160)
+
+SaveBtn.MouseButton1Click:Connect(function()
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if root then
+        -- Erkennt die Insel anhand der aktuellen Position
+        for name, data in pairs(FISH_WORLDS) do
+            if (root.Position - data.fallback).Magnitude < 5000 then
+                savedCFrames[name] = root.CFrame -- Speichert exakte Blickrichtung
+                SaveBtn.Text = "Gespeichert: " .. name
+                task.wait(1)
+                SaveBtn.Text = "Pos + Blick speichern"
+                break
+            end
+        end
+    end
+end)
+
+local FishBtn = Instance.new("TextButton", Frame)
+FishBtn.Size = UDim2.new(0.9, 0, 0, 50)
+FishBtn.Position = UDim2.new(0.05, 0, 0.55, 0)
+FishBtn.Text = "START AUTO-TP"
+FishBtn.BackgroundColor3 = Color3.fromRGB(0, 130, 0)
+
+FishBtn.MouseButton1Click:Connect(function()
+    fishing = not fishing
+    FishBtn.Text = fishing and "STOP" or "START AUTO-TP"
+    FishBtn.BackgroundColor3 = fishing and Color3.fromRGB(130, 0, 0) or Color3.fromRGB(0, 130, 0)
+    
+    if fishing then
+        task.spawn(function()
+            while fishing do
+                local target = getActiveQuestIsland()
+                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                
+                -[span_5](start_span)- Teleportiert dich nur, wenn eine neue Quest-Insel im Text steht[span_5](end_span)
+                if target and target ~= currentAreaName and root then
+                    root.CFrame = savedCFrames[target] or CFrame.new(FISH_WORLDS[target].fallback + Vector3.new(0,3,0))
+                    currentAreaName = target
+                    task.wait(2)
+                end
+                
+                -[span_6](start_span)- Fishing Cycle (aus deinem Script übernommen)[span_6](end_span)
+                fire("BeginCastCharge")
+                task.wait(0.5)
+                fire("FinishCastCharge")
+                task.wait(4)
+                fire("Reel")
+                task.wait(1)
+            end
+        end)
+    end
+end)
