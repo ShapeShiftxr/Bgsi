@@ -1,4 +1,3 @@
--- BGS Sailor + Minigames
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local LP  = game:GetService("Players").LocalPlayer
